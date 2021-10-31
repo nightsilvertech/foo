@@ -1,0 +1,24 @@
+# this yaml file is for define endpoint that
+# will be used by grpc gateway for proxying
+# from grpc to rest api
+type: google.api.Service
+config_version: 3
+http:
+  rules:
+      # add foo selector
+    - selector: api.v1.FooService.AddFoo
+      post: /v1/foo
+      body: "*"
+      # edit foo selector
+    - selector: api.v1.FooService.EditFoo
+      put: /v1/foo/{id}
+      body: "*"
+      # delete foo selector
+    - selector: api.v1.FooService.DeleteFoo
+      delete: /v1/foo/{id}
+      # get all foo selector
+    - selector: api.v1.FooService.GetAllFoo
+      get: /v1/foo/all
+      # get detail foo selector
+    - selector: api.v1.FooService.GetDetailFoo
+      get: /v1/foo/detail/{id}

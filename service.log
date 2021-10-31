@@ -1,0 +1,4 @@
+service=foo time=2021-10-31T12:43:23.10281686Z caller=service.go:41 request_id=d343b746-083f-4821-9032-3b3a7a70d420 test=helo
+service=foo time=2021-10-31T12:43:25.442506397Z caller=service.go:41 request_id=74baf942-63d1-4079-aa05-5cf53a178e0d test=helo
+service=foo time=2021-10-31T12:43:26.966223667Z caller=service.go:41 request_id=a503dade-a311-482e-bf3d-351ddb2e6681 test=helo
+service=foo time=2021-10-31T13:09:00.26959714Z caller=service.go:42 request_id=70418de2-9033-4415-9caa-592c39271862 test=helo

@@ -1,0 +1,56 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+package api.v1;
+option go_package = "gitlab.com/nightsilvertech/Foo/protoc/api/v1";
+
+/**
+  Example for single data
+ */
+message Foo {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  int64 created_at = 4;
+  int64 updated_at = 5;
+}
+
+/**
+  Example for many data
+ */
+message Foos {
+  repeated Foo foos = 1;
+}
+
+/**
+  Select is used for select the data relate
+  to this proto file data can be use for
+  delete and get detail
+  behavior : repeatedly used for some case
+ */
+message Select {
+  string id = 1;
+}
+
+/**
+  Select is used for get all data with
+  limit and page number, can be use for
+  get all data function
+  behavior : repeatedly used for some case
+ */
+message Pagination {
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+/**
+  Service definition please follows this
+  pattern for code consistency
+ */
+service FooService {
+  rpc AddFoo(Foo) returns (Foo);
+  rpc EditFoo(Foo) returns (Foo);
+  rpc DeleteFoo(Select) returns (Foo);
+  rpc GetDetailFoo(Select) returns (Foo);
+  rpc GetAllFoo(Pagination) returns (Foos);
+}
+
