@@ -2,11 +2,11 @@ package transport
 
 import (
 	"context"
-
 	kitoc "github.com/go-kit/kit/tracing/opencensus"
 	grpctransport "github.com/go-kit/kit/transport/grpc"
 	ep "github.com/nightsilvertech/foo/endpoint"
 	pb "github.com/nightsilvertech/foo/protoc/api/v1"
+	"github.com/nightsilvertech/utl/console"
 )
 
 type grpcFooServer struct {
@@ -70,6 +70,9 @@ func (g *grpcFooServer) GetDetailFoo(ctx context.Context, selects *pb.Select) (*
 func NewFooServer(endpoints ep.FooEndpoint) pb.FooServiceServer {
 	options := []grpctransport.ServerOption{
 		kitoc.GRPCServerTrace(),
+		grpctransport.ServerBefore(
+			console.RequestIDMetadataToContext(),
+		),
 	}
 	return &grpcFooServer{
 		addFoo: grpctransport.NewServer(

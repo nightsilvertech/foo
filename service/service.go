@@ -9,7 +9,6 @@ import (
 	_repo "github.com/nightsilvertech/foo/repository"
 	_interface "github.com/nightsilvertech/foo/service/interface"
 	"github.com/nightsilvertech/utl/console"
-	"github.com/nightsilvertech/utl/pass"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -26,7 +25,7 @@ func (s service) AddFoo(ctx context.Context, foo *pb.Foo) (res *pb.Foo, err erro
 
 	foo.Id = uuid.NewV4().String()
 
-	createdBar, err := s.repo.Micro.BarService.AddBar(pass.Create(ctx, "THISISIDDDD"), &pbBar.Bar{
+	createdBar, err := s.repo.Micro.BarService.AddBar(ctx, &pbBar.Bar{
 		Name:        "Bar 1",
 		Description: "This is bar 1",
 	})
