@@ -19,7 +19,7 @@ import (
 	"github.com/nightsilvertech/foo/repository"
 	"github.com/nightsilvertech/foo/service"
 	"github.com/nightsilvertech/foo/transport"
-	"github.com/nightsilvertech/foo/util"
+	"github.com/nightsilvertech/utl/console"
 	"github.com/openzipkin/zipkin-go"
 	"github.com/soheilhy/cmux"
 	"go.opencensus.io/trace"
@@ -69,7 +69,7 @@ func MergeServer(service pb.FooServiceServer, serverOptions []grpc.ServerOption)
 }
 
 func main() {
-	gvar.Logger = util.CreateStdGoKitLog(constant.ServiceName, false)
+	gvar.Logger = console.CreateStdGoKitLog(constant.ServiceName, false)
 
 	reporter := httpreporter.NewReporter("http://localhost:9411/api/v2/spans")
 	localEndpoint, _ := zipkin.NewEndpoint(constant.ServiceName, "http://localhost:0")

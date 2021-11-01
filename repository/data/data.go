@@ -10,7 +10,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	pb "github.com/nightsilvertech/foo/protoc/api/v1"
 	_interface "github.com/nightsilvertech/foo/repository/interface"
-	"github.com/nightsilvertech/foo/util"
+	"github.com/nightsilvertech/utl/errwrap"
 )
 
 var mutex = &sync.RWMutex{}
@@ -29,7 +29,7 @@ func (d *dataReadWrite) WriteFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo,
 	INSERT INTO foos(id, name, description, created_at, updated_at) VALUES (?,?,?,?,?)
 	`)
 	if err != nil {
-		return res, util.Wrap(funcName, "db.Prepare", err)
+		return res, errwrap.Wrap(funcName, "db.Prepare", err)
 	}
 	result, err := stmt.ExecContext(
 		ctx,
@@ -40,10 +40,10 @@ func (d *dataReadWrite) WriteFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo,
 		currentTime,     // updated_at
 	)
 	if err != nil {
-		return res, util.Wrap(funcName, "stmt.ExecContext", err)
+		return res, errwrap.Wrap(funcName, "stmt.ExecContext", err)
 	}
 	if affected, err := result.RowsAffected(); affected == 0 || err != nil {
-		return res, util.Wrap(funcName, "result.RowsAffected", err)
+		return res, errwrap.Wrap(funcName, "result.RowsAffected", err)
 	}
 	return req, nil
 }
@@ -59,7 +59,7 @@ func (d *dataReadWrite) ModifyFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo
 	WHERE id = ?
 	`)
 	if err != nil {
-		return res, util.Wrap(funcName, "db.Prepare", err)
+		return res, errwrap.Wrap(funcName, "db.Prepare", err)
 	}
 	result, err := stmt.ExecContext(
 		ctx,
@@ -68,10 +68,10 @@ func (d *dataReadWrite) ModifyFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo
 		req.Id,          // id
 	)
 	if err != nil {
-		return res, util.Wrap(funcName, "stmt.ExecContext", err)
+		return res, errwrap.Wrap(funcName, "stmt.ExecContext", err)
 	}
 	if affected, err := result.RowsAffected(); affected == 0 || err != nil {
-		return res, util.Wrap(funcName, "result.RowsAffected", err)
+		return res, errwrap.Wrap(funcName, "result.RowsAffected", err)
 	}
 	return req, nil
 }
@@ -81,17 +81,17 @@ func (d *dataReadWrite) RemoveFoo(ctx context.Context, req *pb.Select) (res *pb.
 
 	stmt, err := d.db.Prepare(`DELETE FROM foos WHERE id = ?`)
 	if err != nil {
-		return res, util.Wrap(funcName, "db.Prepare", err)
+		return res, errwrap.Wrap(funcName, "db.Prepare", err)
 	}
 	result, err := stmt.ExecContext(
 		ctx,
 		req.Id, // id
 	)
 	if err != nil {
-		return res, util.Wrap(funcName, "stmt.ExecContext", err)
+		return res, errwrap.Wrap(funcName, "stmt.ExecContext", err)
 	}
 	if affected, err := result.RowsAffected(); affected == 0 || err != nil {
-		return res, util.Wrap(funcName, "result.RowsAffected", err)
+		return res, errwrap.Wrap(funcName, "result.RowsAffected", err)
 	}
 	return res, nil
 }
@@ -101,7 +101,7 @@ func (d *dataReadWrite) ReadDetailFoo(ctx context.Context, selects *pb.Select) (
 
 	stmt, err := d.db.Prepare(`SELECT * FROM foos WHERE id = ?`)
 	if err != nil {
-		return res, util.Wrap(funcName, "db.Prepare", err)
+		return res, errwrap.Wrap(funcName, "db.Prepare", err)
 	}
 	mutex.Lock()
 	row := stmt.QueryRowContext(ctx, selects.Id)
@@ -117,7 +117,7 @@ func (d *dataReadWrite) ReadDetailFoo(ctx context.Context, selects *pb.Select) (
 		&updatedAt,       // updated_at
 	)
 	if err != nil {
-		return res, util.Wrap(funcName, "row.Scan", err)
+		return res, errwrap.Wrap(funcName, "row.Scan", err)
 	}
 	Foo.CreatedAt = createdAt.Unix()
 	Foo.UpdatedAt = updatedAt.Unix()
@@ -129,12 +129,12 @@ func (d *dataReadWrite) ReadAllFoo(ctx context.Context, req *pb.Pagination) (res
 
 	stmt, err := d.db.Prepare(`SELECT * FROM foos ORDER BY created_at DESC`)
 	if err != nil {
-		return res, util.Wrap(funcName, "db.Prepare", err)
+		return res, errwrap.Wrap(funcName, "db.Prepare", err)
 	}
 	mutex.Lock()
 	row, err := stmt.QueryContext(ctx)
 	if err != nil {
-		return res, util.Wrap(funcName, "stmt.QueryContext", err)
+		return res, errwrap.Wrap(funcName, "stmt.QueryContext", err)
 	}
 	mutex.Unlock()
 	defer row.Close()
@@ -151,7 +151,7 @@ func (d *dataReadWrite) ReadAllFoo(ctx context.Context, req *pb.Pagination) (res
 			&updatedAt,       // updated_at
 		)
 		if err != nil {
-			return res, util.Wrap(funcName, "row.Scan", err)
+			return res, errwrap.Wrap(funcName, "row.Scan", err)
 		}
 		foos.Foos = append(foos.Foos, &pb.Foo{
 			Id:          Foo.Id,
@@ -177,7 +177,7 @@ func NewDataReadWriter(username, password, host, port, name string) (_interface.
 	)
 	db, err := sql.Open("mysql", databaseUrl)
 	if err != nil {
-		return nil, util.Wrap(funcName, "sql.Open", err)
+		return nil, errwrap.Wrap(funcName, "sql.Open", err)
 	}
 
 	return &dataReadWrite{
