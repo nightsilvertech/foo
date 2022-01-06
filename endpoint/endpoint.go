@@ -2,9 +2,10 @@ package endpoint
 
 import (
 	"github.com/go-kit/kit/endpoint"
+	kitoc "github.com/go-kit/kit/tracing/opencensus"
 	"github.com/nightsilvertech/foo/constant"
-	"github.com/nightsilvertech/foo/middleware"
 	_interface "github.com/nightsilvertech/foo/service/interface"
+	"github.com/nightsilvertech/utl/middlewares"
 )
 
 type FooEndpoint struct {
@@ -20,35 +21,40 @@ func NewFooEndpoint(svc _interface.FooService) FooEndpoint {
 	{
 		const name = `AddFoo`
 		addFooEp = makeAddFooEndpoint(svc)
-		addFooEp = middleware.CircuitBreakerMiddleware(constant.ServiceName)(addFooEp)
+		addFooEp = middlewares.CircuitBreakerMiddleware(constant.ServiceName)(addFooEp)
+		addFooEp = kitoc.TraceEndpoint(name)(addFooEp)
 	}
 
 	var editFooEp endpoint.Endpoint
 	{
 		const name = `EditFoo`
 		editFooEp = makeEditFooEndpoint(svc)
-		editFooEp = middleware.CircuitBreakerMiddleware(constant.ServiceName)(editFooEp)
+		editFooEp = middlewares.CircuitBreakerMiddleware(constant.ServiceName)(editFooEp)
+		editFooEp = kitoc.TraceEndpoint(name)(editFooEp)
 	}
 
 	var deleteFooEp endpoint.Endpoint
 	{
 		const name = `DeleteFoo`
 		deleteFooEp = makeDeleteFooEndpoint(svc)
-		deleteFooEp = middleware.CircuitBreakerMiddleware(constant.ServiceName)(deleteFooEp)
+		deleteFooEp = middlewares.CircuitBreakerMiddleware(constant.ServiceName)(deleteFooEp)
+		deleteFooEp = kitoc.TraceEndpoint(name)(deleteFooEp)
 	}
 
 	var getAllFooEp endpoint.Endpoint
 	{
 		const name = `GetAllFoo`
 		getAllFooEp = makeGetAllFooEndpoint(svc)
-		getAllFooEp = middleware.CircuitBreakerMiddleware(constant.ServiceName)(getAllFooEp)
+		getAllFooEp = middlewares.CircuitBreakerMiddleware(constant.ServiceName)(getAllFooEp)
+		getAllFooEp = kitoc.TraceEndpoint(name)(getAllFooEp)
 	}
 
 	var getDetailFooEp endpoint.Endpoint
 	{
 		const name = `GetDetailFoo`
 		getDetailFooEp = makeGetDetailFooEndpoint(svc)
-		getDetailFooEp = middleware.CircuitBreakerMiddleware(constant.ServiceName)(getDetailFooEp)
+		getDetailFooEp = middlewares.CircuitBreakerMiddleware(constant.ServiceName)(getDetailFooEp)
+		getDetailFooEp = kitoc.TraceEndpoint(name)(getDetailFooEp)
 	}
 
 	return FooEndpoint{

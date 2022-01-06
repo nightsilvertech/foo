@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-kit/kit/log/level"
 	pbBar "github.com/nightsilvertech/bar/protoc/api/v1"
 	"github.com/nightsilvertech/foo/gvar"
@@ -10,14 +11,18 @@ import (
 	_interface "github.com/nightsilvertech/foo/service/interface"
 	"github.com/nightsilvertech/utl/console"
 	uuid "github.com/satori/go.uuid"
+	"go.opencensus.io/trace"
 )
 
 type service struct {
-	repo _repo.Repository
+	tracer trace.Tracer
+	repo   _repo.Repository
 }
 
 func (s service) AddFoo(ctx context.Context, foo *pb.Foo) (res *pb.Foo, err error) {
 	const funcName = `AddFoo`
+	_, span := s.tracer.StartSpan(ctx, funcName)
+	defer span.End()
 
 	ctx, consoleLog := console.Log(ctx, gvar.Logger, funcName)
 
@@ -31,7 +36,7 @@ func (s service) AddFoo(ctx context.Context, foo *pb.Foo) (res *pb.Foo, err erro
 	})
 	if err != nil {
 		level.Error(consoleLog).Log(console.LogErr, err)
-		return res, err
+		return res, fmt.Errorf("error from add bar %v", err)
 	}
 
 	level.Info(consoleLog).Log(console.LogData, createdBar)
@@ -61,8 +66,9 @@ func (s service) GetAllFoo(ctx context.Context, pagination *pb.Pagination) (*pb.
 	return s.repo.Data.ReadAllFoo(ctx, pagination)
 }
 
-func NewService(repo _repo.Repository) _interface.FooService {
+func NewService(repo _repo.Repository, tracer trace.Tracer) _interface.FooService {
 	return &service{
-		repo: repo,
+		tracer: tracer,
+		repo:   repo,
 	}
 }

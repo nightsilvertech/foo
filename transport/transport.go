@@ -10,7 +10,7 @@ import (
 )
 
 type grpcFooServer struct {
-	pb.UnimplementedFooServiceServer
+	pb.FooServiceServer
 	addFoo       grpctransport.Handler
 	editFoo      grpctransport.Handler
 	deleteFoo    grpctransport.Handler
