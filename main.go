@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	oczipkin "contrib.go.opencensus.io/exporter/zipkin"
+	"crypto/tls"
 	"fmt"
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/go-kit/log/level"
@@ -17,59 +18,68 @@ import (
 	"github.com/nightsilvertech/utl/console"
 	"github.com/openzipkin/zipkin-go"
 	httpreporter "github.com/openzipkin/zipkin-go/reporter/http"
-	"github.com/soheilhy/cmux"
 	"go.opencensus.io/trace"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"log"
 	"net"
 	"net/http"
 )
 
-func ServeGRPC(listener net.Listener, service pb.FooServiceServer, serverOptions []grpc.ServerOption) error {
-	level.Info(gvar.Logger).Log(console.LogInfo, "serving grpc server")
+type Secure struct {
+	ServerCertPath     string
+	ServerKeyPath      string
+	ServerNameOverride string
+}
 
-	var grpcServer *grpc.Server
-	if len(serverOptions) > 0 {
-		grpcServer = grpc.NewServer(serverOptions...)
-	} else {
-		grpcServer = grpc.NewServer()
+func (secure Secure) ServeGRPC(service pb.FooServiceServer) error {
+	level.Info(gvar.Logger).Log(console.LogInfo, "serving grpc server")
+	address := fmt.Sprintf("%s:%s", constant.Host, constant.GrpcPort)
+	serverCert, err := tls.LoadX509KeyPair(secure.ServerCertPath, secure.ServerKeyPath)
+	if err != nil {
+		return err
 	}
+	serverOpts := []grpc.ServerOption{grpc.Creds(credentials.NewServerTLSFromCert(&serverCert))}
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return err
+	}
+
+	grpcServer := grpc.NewServer(serverOpts...)
 	pb.RegisterFooServiceServer(grpcServer, service)
 	return grpcServer.Serve(listener)
 }
 
-func ServeHTTP(listener net.Listener, service pb.FooServiceServer) error {
+func (secure Secure) ServeHTTP(service pb.FooServiceServer) error {
 	level.Info(gvar.Logger).Log(console.LogInfo, "serving http server")
-
-	mux := runtime.NewServeMux()
-	err := pb.RegisterFooServiceHandlerServer(context.Background(), mux, service)
+	httpAddress := fmt.Sprintf("%s:%s", constant.Host, constant.HttpPort)
+	grpcAddress := fmt.Sprintf("%s:%s", constant.Host, constant.GrpcPort)
+	clientCert, err := credentials.NewClientTLSFromFile(secure.ServerCertPath, secure.ServerNameOverride)
 	if err != nil {
 		return err
 	}
-	return http.Serve(listener, mux)
+	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(clientCert)}
+
+	mux := runtime.NewServeMux()
+	pb.RegisterFooServiceServer(grpc.NewServer(), service)
+	err = pb.RegisterFooServiceHandlerFromEndpoint(context.Background(), mux, grpcAddress, dialOptions)
+	if err != nil {
+		return err
+	}
+	return http.ListenAndServeTLS(httpAddress, secure.ServerCertPath, secure.ServerKeyPath, mux)
 }
 
-func MergeServer(service pb.FooServiceServer, serverOptions []grpc.ServerOption) {
-	level.Info(gvar.Logger).Log(console.LogInfo, "service started")
-
-	port := fmt.Sprintf(":%s", "1901")
-	listener, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatal(err)
+func Serve(service pb.FooServiceServer) {
+	secure := Secure{
+		ServerCertPath:     "C:\\Users\\Asus\\Desktop\\tls\\foo\\server.crt",
+		ServerKeyPath:      "C:\\Users\\Asus\\Desktop\\tls\\foo\\server.key",
+		ServerNameOverride: "0.0.0.0",
 	}
 
-	m := cmux.New(listener)
-	grpcListener := m.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings(
-		"content-type", "application/grpc",
-	))
-	httpListener := m.Match(cmux.HTTP1Fast())
-
 	g := new(errgroup.Group)
-	g.Go(func() error { return ServeGRPC(grpcListener, service, serverOptions) })
-	g.Go(func() error { return ServeHTTP(httpListener, service) })
-	g.Go(func() error { return m.Serve() })
-
+	g.Go(func() error { return secure.ServeGRPC(service) })
+	g.Go(func() error { return secure.ServeHTTP(service) })
 	log.Fatal(g.Wait())
 }
 
@@ -77,12 +87,12 @@ func main() {
 	gvar.Logger = console.CreateStdGoKitLog(constant.ServiceName, false, "C:\\Users\\Asus\\Desktop\\service.log")
 
 	reporter := httpreporter.NewReporter("http://localhost:9411/api/v2/spans")
-	localEndpoint, _ := zipkin.NewEndpoint(constant.ServiceName, ":0")
+	localEndpoint, _ := zipkin.NewEndpoint(constant.ServiceName, constant.ZipkinHostPort)
 	exporter := oczipkin.NewExporter(reporter, localEndpoint)
 	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 	trace.RegisterExporter(exporter)
 	tracer := trace.DefaultTracer
-	hystrix.ConfigureCommand(constant.ServiceName, hystrix.CommandConfig{Timeout: 1000 * 30})
+	hystrix.ConfigureCommand(constant.ServiceName, hystrix.CommandConfig{Timeout: constant.CircuitBreakerTimout})
 
 	repositories, err := repository.NewRepository(tracer)
 	if err != nil {
@@ -91,5 +101,5 @@ func main() {
 	services := service.NewService(*repositories, tracer)
 	endpoints := ep.NewFooEndpoint(services)
 	server := transport.NewFooServer(endpoints)
-	MergeServer(server, nil)
+	Serve(server)
 }

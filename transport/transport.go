@@ -7,6 +7,7 @@ import (
 	ep "github.com/nightsilvertech/foo/endpoint"
 	pb "github.com/nightsilvertech/foo/protoc/api/v1"
 	"github.com/nightsilvertech/utl/console"
+	"github.com/nightsilvertech/utl/jsonwebtoken"
 )
 
 type grpcFooServer struct {
@@ -32,7 +33,6 @@ func (g *grpcFooServer) AddFoo(ctx context.Context, Foo *pb.Foo) (*pb.Foo, error
 		return nil, err
 	}
 	return res.(*pb.Foo), nil
-
 }
 
 func (g *grpcFooServer) EditFoo(ctx context.Context, Foo *pb.Foo) (*pb.Foo, error) {
@@ -72,6 +72,7 @@ func NewFooServer(endpoints ep.FooEndpoint) pb.FooServiceServer {
 		kitoc.GRPCServerTrace(),
 		grpctransport.ServerBefore(
 			console.RequestIDMetadataToContext(),
+			jsonwebtoken.BearerTokenMetadataToContext(),
 		),
 	}
 	return &grpcFooServer{
