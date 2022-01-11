@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	oczipkin "contrib.go.opencensus.io/exporter/zipkin"
 	"crypto/tls"
 	"fmt"
-	"github.com/afex/hystrix-go/hystrix"
 	"github.com/go-kit/log/level"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/nightsilvertech/foo/constant"
@@ -16,9 +14,7 @@ import (
 	"github.com/nightsilvertech/foo/service"
 	"github.com/nightsilvertech/foo/transport"
 	"github.com/nightsilvertech/utl/console"
-	"github.com/openzipkin/zipkin-go"
-	httpreporter "github.com/openzipkin/zipkin-go/reporter/http"
-	"go.opencensus.io/trace"
+	"github.com/nightsilvertech/utl/preparation"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -84,20 +80,20 @@ func Serve(service pb.FooServiceServer) {
 }
 
 func main() {
-	gvar.Logger = console.CreateStdGoKitLog(constant.ServiceName, false, "C:\\Users\\Asus\\Desktop\\service.log")
-
-	reporter := httpreporter.NewReporter("http://localhost:9411/api/v2/spans")
-	localEndpoint, _ := zipkin.NewEndpoint(constant.ServiceName, constant.ZipkinHostPort)
-	exporter := oczipkin.NewExporter(reporter, localEndpoint)
-	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
-	trace.RegisterExporter(exporter)
-	tracer := trace.DefaultTracer
-	hystrix.ConfigureCommand(constant.ServiceName, hystrix.CommandConfig{Timeout: constant.CircuitBreakerTimout})
-
-	repositories, err := repository.NewRepository(tracer)
-	if err != nil {
-		panic(err)
+	prepare := preparation.Data{
+		LoggingFilePath:            "C:\\Users\\Asus\\Desktop\\service.log",
+		TracerUrl:                  "http://localhost:9411/api/v2/spans",
+		CircuitBreakerTimeout:      constant.CircuitBreakerTimout,
+		ServiceName:                constant.ServiceName,
+		ZipkinEndpointPort:         constant.ZipkinHostPort,
+		Debug:                      false,
+		FractionProbabilitySampler: 1,
 	}
+	prepare.CircuitBreaker()
+	gvar.Logger = prepare.Logger()
+	tracer := prepare.Tracer()
+
+	repositories := repository.NewRepository(tracer)
 	services := service.NewService(*repositories, tracer)
 	endpoints := ep.NewFooEndpoint(services)
 	server := transport.NewFooServer(endpoints)
