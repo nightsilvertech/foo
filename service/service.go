@@ -11,6 +11,7 @@ import (
 	"github.com/nightsilvertech/utl/console"
 	uuid "github.com/satori/go.uuid"
 	"go.opencensus.io/trace"
+	"log"
 )
 
 type service struct {
@@ -56,6 +57,8 @@ func (s service) AddFoo(ctx context.Context, foo *pb.Foo) (res *pb.Foo, err erro
 
 	// downer log info
 	level.Info(consoleLog).Log(console.LogInfo, "downer")
+
+	log.Println(createdBar)
 
 	return res, nil
 }
@@ -123,6 +126,8 @@ func (s service) DeleteFoo(ctx context.Context, selects *pb.Select) (res *pb.Foo
 	// downer log info
 	level.Info(consoleLog).Log(console.LogInfo, "downer")
 
+	log.Println(deletedBar)
+
 	return res, nil
 }
 
@@ -147,8 +152,21 @@ func (s service) GetDetailFoo(ctx context.Context, selects *pb.Select) (res *pb.
 		return res, err
 	}
 
+	selectedBar, err := s.repo.Micro.BarService.GetDetailBar(ctx, &pbBar.Select{
+		Id: selects.Id,
+	})
+	if err != nil {
+		// error log
+		level.Error(consoleLog).Log(console.LogErr, err)
+		// span set status when error
+		span.SetStatus(trace.Status{Code: int32(trace.StatusCodeInternal), Message: err.Error()})
+		return res, err
+	}
+
 	// downer log info
 	level.Info(consoleLog).Log(console.LogInfo, "downer")
+
+	log.Println(selectedBar)
 
 	return res, nil
 }
@@ -174,8 +192,22 @@ func (s service) GetAllFoo(ctx context.Context, pagination *pb.Pagination) (res 
 		return res, err
 	}
 
+	allBar, err := s.repo.Micro.BarService.GetAllBar(ctx, &pbBar.Pagination{
+		Page:  1,
+		Limit: 10,
+	})
+	if err != nil {
+		// error log
+		level.Error(consoleLog).Log(console.LogErr, err)
+		// span set status when error
+		span.SetStatus(trace.Status{Code: int32(trace.StatusCodeInternal), Message: err.Error()})
+		return res, err
+	}
+
 	// downer log info
 	level.Info(consoleLog).Log(console.LogInfo, "downer")
+
+	log.Println(allBar)
 
 	return res, nil
 }

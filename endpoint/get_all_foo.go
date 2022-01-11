@@ -18,7 +18,7 @@ func makeGetAllFooEndpoint(usecase _interface.FooService) endpoint.Endpoint {
 func (e FooEndpoint) GetAllFoo(ctx context.Context, req *pb.Pagination) (*pb.Foos, error) {
 	res, err := e.GetAllFooEndpoint(ctx, req)
 	if err != nil {
-		return res.(*pb.Foos), err
+		return &pb.Foos{}, err
 	}
 	return res.(*pb.Foos), nil
 }

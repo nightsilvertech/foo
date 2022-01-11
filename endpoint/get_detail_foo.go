@@ -18,7 +18,7 @@ func makeGetDetailFooEndpoint(usecase _interface.FooService) endpoint.Endpoint {
 func (e FooEndpoint) GetDetailFoo(ctx context.Context, req *pb.Select) (*pb.Foo, error) {
 	res, err := e.GetDetailFooEndpoint(ctx, req)
 	if err != nil {
-		return res.(*pb.Foo), err
+		return &pb.Foo{}, err
 	}
 	return res.(*pb.Foo), nil
 }

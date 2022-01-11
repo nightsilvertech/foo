@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"go.opencensus.io/trace"
 	"sync"
 	"time"
 
@@ -16,11 +17,14 @@ import (
 var mutex = &sync.RWMutex{}
 
 type dataReadWrite struct {
-	db *sql.DB
+	tracer trace.Tracer
+	db     *sql.DB
 }
 
 func (d *dataReadWrite) WriteFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo, err error) {
 	const funcName = `WriteFoo`
+	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	defer span.End()
 
 	currentTime := time.Now()
 	req.CreatedAt = currentTime.Unix()
@@ -50,6 +54,8 @@ func (d *dataReadWrite) WriteFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo,
 
 func (d *dataReadWrite) ModifyFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo, err error) {
 	const funcName = `ModifyFoo`
+	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	defer span.End()
 
 	currentTime := time.Now()
 	req.UpdatedAt = currentTime.Unix()
@@ -78,8 +84,33 @@ func (d *dataReadWrite) ModifyFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo
 
 func (d *dataReadWrite) RemoveFoo(ctx context.Context, req *pb.Select) (res *pb.Foo, err error) {
 	const funcName = `RemoveFoo`
+	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	defer span.End()
 
-	stmt, err := d.db.Prepare(`DELETE FROM foos WHERE id = ?`)
+	stmt, err := d.db.Prepare(`SELECT * FROM foos WHERE id = ?`)
+	if err != nil {
+		return res, errwrap.Wrap(funcName, "db.Prepare", err)
+	}
+	mutex.Lock()
+	row := stmt.QueryRowContext(ctx, req.Id)
+	mutex.Unlock()
+
+	var foo pb.Foo
+	var createdAt, updatedAt time.Time
+	err = row.Scan(
+		&foo.Id,          // id
+		&foo.Name,        // name
+		&foo.Description, // description
+		&createdAt,       // created_at
+		&updatedAt,       // updated_at
+	)
+	if err != nil {
+		return res, errwrap.Wrap(funcName, "row.Scan", err)
+	}
+	foo.CreatedAt = createdAt.Unix()
+	foo.UpdatedAt = updatedAt.Unix()
+
+	stmt, err = d.db.Prepare(`DELETE FROM foos WHERE id = ?`)
 	if err != nil {
 		return res, errwrap.Wrap(funcName, "db.Prepare", err)
 	}
@@ -93,11 +124,13 @@ func (d *dataReadWrite) RemoveFoo(ctx context.Context, req *pb.Select) (res *pb.
 	if affected, err := result.RowsAffected(); affected == 0 || err != nil {
 		return res, errwrap.Wrap(funcName, "result.RowsAffected", err)
 	}
-	return res, nil
+	return &foo, nil
 }
 
 func (d *dataReadWrite) ReadDetailFoo(ctx context.Context, selects *pb.Select) (res *pb.Foo, err error) {
 	const funcName = `ReadDetailFoo`
+	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	defer span.End()
 
 	stmt, err := d.db.Prepare(`SELECT * FROM foos WHERE id = ?`)
 	if err != nil {
@@ -126,6 +159,8 @@ func (d *dataReadWrite) ReadDetailFoo(ctx context.Context, selects *pb.Select) (
 
 func (d *dataReadWrite) ReadAllFoo(ctx context.Context, req *pb.Pagination) (res *pb.Foos, err error) {
 	const funcName = `ReadAllFoo`
+	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	defer span.End()
 
 	stmt, err := d.db.Prepare(`SELECT * FROM foos ORDER BY created_at DESC`)
 	if err != nil {
@@ -164,7 +199,7 @@ func (d *dataReadWrite) ReadAllFoo(ctx context.Context, req *pb.Pagination) (res
 	return &foos, nil
 }
 
-func NewDataReadWriter(username, password, host, port, name string) (_interface.DRW, error) {
+func NewDataReadWriter(username, password, host, port, name string, tracer trace.Tracer) (_interface.DRW, error) {
 	const funcName = `NewDataReadWriter`
 
 	databaseUrl := fmt.Sprintf(
@@ -181,6 +216,7 @@ func NewDataReadWriter(username, password, host, port, name string) (_interface.
 	}
 
 	return &dataReadWrite{
-		db: db,
+		tracer: tracer,
+		db:     db,
 	}, nil
 }

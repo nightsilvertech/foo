@@ -18,7 +18,7 @@ func makeEditFooEndpoint(usecase _interface.FooService) endpoint.Endpoint {
 func (e FooEndpoint) EditFoo(ctx context.Context, req *pb.Foo) (*pb.Foo, error) {
 	res, err := e.EditFooEndpoint(ctx, req)
 	if err != nil {
-		return res.(*pb.Foo), err
+		return &pb.Foo{}, err
 	}
 	return res.(*pb.Foo), nil
 }

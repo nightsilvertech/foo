@@ -15,7 +15,7 @@ type Repository struct {
 }
 
 func NewRepository(tracer trace.Tracer) (repo *Repository, err error) {
-	dataReadWriter, err := data.NewDataReadWriter("root", "root", "localhost", "3306", "foobar")
+	dataReadWriter, err := data.NewDataReadWriter("root", "root", "localhost", "3306", "foobar", tracer)
 	if err != nil {
 		return repo, err
 	}
