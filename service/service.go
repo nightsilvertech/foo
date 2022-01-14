@@ -15,13 +15,12 @@ import (
 )
 
 type service struct {
-	tracer trace.Tracer
 	repo   _repo.Repository
 }
 
 func (s service) AddFoo(ctx context.Context, foo *pb.Foo) (res *pb.Foo, err error) {
 	const funcName = `AddFoo`
-	_, span := s.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	// console log initialization
@@ -65,7 +64,7 @@ func (s service) AddFoo(ctx context.Context, foo *pb.Foo) (res *pb.Foo, err erro
 
 func (s service) EditFoo(ctx context.Context, foo *pb.Foo) (res *pb.Foo, err error) {
 	const funcName = `EditFoo`
-	_, span := s.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	// console log initialization
@@ -92,7 +91,7 @@ func (s service) EditFoo(ctx context.Context, foo *pb.Foo) (res *pb.Foo, err err
 
 func (s service) DeleteFoo(ctx context.Context, selects *pb.Select) (res *pb.Foo, err error) {
 	const funcName = `DeleteFoo`
-	_, span := s.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	// console log initialization
@@ -133,7 +132,7 @@ func (s service) DeleteFoo(ctx context.Context, selects *pb.Select) (res *pb.Foo
 
 func (s service) GetDetailFoo(ctx context.Context, selects *pb.Select) (res *pb.Foo, err error) {
 	const funcName = `GetDetailFoo`
-	_, span := s.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	// console log initialization
@@ -173,7 +172,7 @@ func (s service) GetDetailFoo(ctx context.Context, selects *pb.Select) (res *pb.
 
 func (s service) GetAllFoo(ctx context.Context, pagination *pb.Pagination) (res *pb.Foos, err error) {
 	const funcName = `GetAllFoo`
-	_, span := s.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	// console log initialization
@@ -212,9 +211,8 @@ func (s service) GetAllFoo(ctx context.Context, pagination *pb.Pagination) (res 
 	return res, nil
 }
 
-func NewService(repo _repo.Repository, tracer trace.Tracer) _interface.FooService {
+func NewService(repo _repo.Repository) _interface.FooService {
 	return &service{
-		tracer: tracer,
 		repo:   repo,
 	}
 }

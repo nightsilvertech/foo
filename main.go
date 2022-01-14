@@ -27,9 +27,10 @@ type Secure struct {
 	ServerCertPath     string
 	ServerKeyPath      string
 	ServerNameOverride string
+	Service            pb.FooServiceServer
 }
 
-func (secure Secure) ServeGRPC(service pb.FooServiceServer) error {
+func (secure Secure) ServeGRPC() error {
 	level.Info(gvar.Logger).Log(console.LogInfo, "serving grpc server")
 	address := fmt.Sprintf("%s:%s", constant.Host, constant.GrpcPort)
 	serverCert, err := tls.LoadX509KeyPair(secure.ServerCertPath, secure.ServerKeyPath)
@@ -43,11 +44,11 @@ func (secure Secure) ServeGRPC(service pb.FooServiceServer) error {
 	}
 
 	grpcServer := grpc.NewServer(serverOpts...)
-	pb.RegisterFooServiceServer(grpcServer, service)
+	pb.RegisterFooServiceServer(grpcServer, secure.Service)
 	return grpcServer.Serve(listener)
 }
 
-func (secure Secure) ServeHTTP(service pb.FooServiceServer) error {
+func (secure Secure) ServeHTTP() error {
 	level.Info(gvar.Logger).Log(console.LogInfo, "serving http server")
 	httpAddress := fmt.Sprintf("%s:%s", constant.Host, constant.HttpPort)
 	grpcAddress := fmt.Sprintf("%s:%s", constant.Host, constant.GrpcPort)
@@ -58,7 +59,7 @@ func (secure Secure) ServeHTTP(service pb.FooServiceServer) error {
 	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(clientCert)}
 
 	mux := runtime.NewServeMux()
-	pb.RegisterFooServiceServer(grpc.NewServer(), service)
+	pb.RegisterFooServiceServer(grpc.NewServer(), secure.Service)
 	err = pb.RegisterFooServiceHandlerFromEndpoint(context.Background(), mux, grpcAddress, dialOptions)
 	if err != nil {
 		return err
@@ -71,17 +72,18 @@ func Serve(service pb.FooServiceServer) {
 		ServerCertPath:     "C:\\Users\\Asus\\Desktop\\tls\\foo\\server.crt",
 		ServerKeyPath:      "C:\\Users\\Asus\\Desktop\\tls\\foo\\server.key",
 		ServerNameOverride: "0.0.0.0",
+		Service:            service,
 	}
 
 	g := new(errgroup.Group)
-	g.Go(func() error { return secure.ServeGRPC(service) })
-	g.Go(func() error { return secure.ServeHTTP(service) })
+	g.Go(func() error { return secure.ServeGRPC() })
+	g.Go(func() error { return secure.ServeHTTP() })
 	log.Fatal(g.Wait())
 }
 
 func main() {
 	prepare := preparation.Data{
-		LoggingFilePath:            "C:\\Users\\Asus\\Desktop\\service.log",
+		//LoggingFilePath:            "C:\\Users\\Asus\\Desktop\\service.log",
 		TracerUrl:                  "http://localhost:9411/api/v2/spans",
 		CircuitBreakerTimeout:      constant.CircuitBreakerTimout,
 		ServiceName:                constant.ServiceName,
@@ -91,10 +93,10 @@ func main() {
 	}
 	prepare.CircuitBreaker()
 	gvar.Logger = prepare.Logger()
-	tracer := prepare.Tracer()
+	gvar.Tracer = prepare.Tracer()
 
-	repositories := repository.NewRepository(tracer)
-	services := service.NewService(*repositories, tracer)
+	repositories := repository.NewRepository()
+	services := service.NewService(*repositories)
 	endpoints := ep.NewFooEndpoint(services)
 	server := transport.NewFooServer(endpoints)
 	Serve(server)

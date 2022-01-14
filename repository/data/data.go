@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"go.opencensus.io/trace"
+	"github.com/nightsilvertech/foo/gvar"
 	"sync"
 	"time"
 
@@ -17,13 +17,12 @@ import (
 var mutex = &sync.RWMutex{}
 
 type dataReadWrite struct {
-	tracer trace.Tracer
-	db     *sql.DB
+	db *sql.DB
 }
 
 func (d *dataReadWrite) WriteFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo, err error) {
 	const funcName = `WriteFoo`
-	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	currentTime := time.Now()
@@ -54,7 +53,7 @@ func (d *dataReadWrite) WriteFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo,
 
 func (d *dataReadWrite) ModifyFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo, err error) {
 	const funcName = `ModifyFoo`
-	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	currentTime := time.Now()
@@ -84,7 +83,7 @@ func (d *dataReadWrite) ModifyFoo(ctx context.Context, req *pb.Foo) (res *pb.Foo
 
 func (d *dataReadWrite) RemoveFoo(ctx context.Context, req *pb.Select) (res *pb.Foo, err error) {
 	const funcName = `RemoveFoo`
-	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	stmt, err := d.db.Prepare(`SELECT * FROM foos WHERE id = ?`)
@@ -129,7 +128,7 @@ func (d *dataReadWrite) RemoveFoo(ctx context.Context, req *pb.Select) (res *pb.
 
 func (d *dataReadWrite) ReadDetailFoo(ctx context.Context, selects *pb.Select) (res *pb.Foo, err error) {
 	const funcName = `ReadDetailFoo`
-	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	stmt, err := d.db.Prepare(`SELECT * FROM foos WHERE id = ?`)
@@ -159,7 +158,7 @@ func (d *dataReadWrite) ReadDetailFoo(ctx context.Context, selects *pb.Select) (
 
 func (d *dataReadWrite) ReadAllFoo(ctx context.Context, req *pb.Pagination) (res *pb.Foos, err error) {
 	const funcName = `ReadAllFoo`
-	ctx, span := d.tracer.StartSpan(ctx, funcName)
+	ctx, span := gvar.Tracer.StartSpan(ctx, funcName)
 	defer span.End()
 
 	stmt, err := d.db.Prepare(`SELECT * FROM foos ORDER BY created_at DESC`)
@@ -199,7 +198,7 @@ func (d *dataReadWrite) ReadAllFoo(ctx context.Context, req *pb.Pagination) (res
 	return &foos, nil
 }
 
-func NewDataReadWriter(username, password, host, port, name string, tracer trace.Tracer) (_interface.DRW, error) {
+func NewDataReadWriter(username, password, host, port, name string) (_interface.DRW, error) {
 	const funcName = `NewDataReadWriter`
 
 	databaseUrl := fmt.Sprintf(
@@ -216,7 +215,6 @@ func NewDataReadWriter(username, password, host, port, name string, tracer trace
 	}
 
 	return &dataReadWrite{
-		tracer: tracer,
-		db:     db,
+		db: db,
 	}, nil
 }
